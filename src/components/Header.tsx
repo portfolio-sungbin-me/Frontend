@@ -13,15 +13,18 @@ export default function Header() {
   const { activeAgent, setActiveAgent } = useAgent()
 
   // 🎯 상태 자동 갱신 시뮬레이션
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const states: StatusType[] = ['connected', 'warning', 'disconnected']
-      setAiStatus(states[Math.floor(Math.random() * 3)])
-      setDbStatus(states[Math.floor(Math.random() * 3)])
-      setSlackStatus(states[Math.floor(Math.random() * 3)])
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [])
+useEffect(() => {
+  const interval = setInterval(() => {
+    const states: StatusType[] = ['connected', 'warning', 'disconnected']
+    setAiStatus(states[Math.floor(Math.random() * 3)])
+    setDbStatus(states[Math.floor(Math.random() * 3)])
+    setSlackStatus(states[Math.floor(Math.random() * 3)])
+  }, 3000)
+
+  // ✅ cleanup
+  return () => clearInterval(interval)
+}, [])
+
 
   // 🌙 다크 모드 토글
   const toggleTheme = () => {

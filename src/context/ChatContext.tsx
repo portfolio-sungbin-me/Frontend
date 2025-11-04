@@ -1,6 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useSession } from './SessionContext'
-import { Message } from '../types/chat' // ✅ 타입 위치 통일
+
+export interface Message {
+  id: string
+  role: 'user' | 'ai'
+  content: string
+  timestamp: string
+  agentType: 'dev' | 'infra' | 'main'
+}
 
 interface ChatContextType {
   messages: Message[]
@@ -21,21 +28,27 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     return saved ? JSON.parse(saved) : []
   })
 
-  // ✅ 세션이 변경되면 해당 세션 메시지 로드
+  // ✅ 세션이 바뀌면 그 세션의 메시지로 교체
   useEffect(() => {
     if (!currentSession) {
       setMessages([])
       return
     }
-    setMessages(currentSession.messages || [])
+    // ✅ JSON 비교로 불필요한 루프 방지
+    const isChanged =
+      JSON.stringify(currentSession.messages || []) !== JSON.stringify(messages)
+    if (isChanged) setMessages(currentSession.messages || [])
   }, [currentSession])
 
-  // ✅ 메시지가 바뀌면 세션 업데이트 (보호조건 추가)
+  // ✅ 메시지가 바뀌면 세션에도 자동 반영 (조건부)
   useEffect(() => {
-    if (currentSession && Array.isArray(messages)) {
+    if (!currentSession) return
+    const isDifferent =
+      JSON.stringify(currentSession.messages) !== JSON.stringify(messages)
+    if (isDifferent) {
       updateSessionMessages(currentSession.id, messages)
     }
-  }, [messages, currentSession])
+  }, [messages])
 
   // ✅ 최근 질문 localStorage 저장
   useEffect(() => {
@@ -53,21 +66,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   const loadChat = (question: string) => {
-    if (!currentSession) return
     const newMsgs: Message[] = [
       {
         id: crypto.randomUUID(),
         role: 'user',
         content: question,
         timestamp: new Date().toISOString(),
-        agentType: currentSession.agentType,
+        agentType: currentSession?.agentType || 'main',
       },
       {
         id: crypto.randomUUID(),
         role: 'ai',
         content: `"${question}"에 대한 이전 답변을 복원했습니다.`,
         timestamp: new Date().toISOString(),
-        agentType: currentSession.agentType,
+        agentType: currentSession?.agentType || 'main',
       },
     ]
     setMessages(newMsgs)

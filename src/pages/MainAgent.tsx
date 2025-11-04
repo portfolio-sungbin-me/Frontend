@@ -1,13 +1,14 @@
+// src/pages/MainAgent.tsx
 import { useState, useEffect, useRef } from 'react'
 import { useChat } from '../context/ChatContext'
 import { useSession } from '../context/SessionContext'
 import { motion } from 'framer-motion'
-import { Message } from '../types/chat' // ✅ 수정
+import { Message } from '../types/chat'
 
 export default function MainAgent() {
   const [input, setInput] = useState('')
   const { messages, addMessage, addQuestion } = useChat()
-  const { currentSession } = useSession()
+  const { currentSession, ensureSession } = useSession()
   const [isTyping, setIsTyping] = useState(false)
   const [typingText, setTypingText] = useState('')
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -17,14 +18,15 @@ export default function MainAgent() {
   }, [messages, isTyping, typingText])
 
   const handleSend = async () => {
-    if (!input.trim() || !currentSession) return
+    if (!input.trim()) return
 
+    const sess = ensureSession('main')  // ⬅️ 기본 세션 보장
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: 'user',
       content: input,
       timestamp: new Date().toISOString(),
-      agentType: currentSession.agentType,
+      agentType: sess.agentType,
     }
 
     addMessage(userMsg)
@@ -47,7 +49,7 @@ export default function MainAgent() {
             role: 'ai',
             content: fullResponse,
             timestamp: new Date().toISOString(),
-            agentType: currentSession.agentType,
+            agentType: sess.agentType,
           }
           addMessage(aiMsg)
           setIsTyping(false)
@@ -62,7 +64,7 @@ export default function MainAgent() {
       {!currentSession ? (
         <div className="flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
           <p className="text-sm">현재 활성화된 세션이 없습니다.</p>
-          <p className="text-xs mt-1">왼쪽 사이드바에서 새 세션을 추가해주세요.</p>
+          <p className="text-xs mt-1">왼쪽 사이드바에서 새 세션을 추가하거나 메시지를 보내면 자동 생성됩니다.</p>
         </div>
       ) : (
         <>
@@ -70,7 +72,6 @@ export default function MainAgent() {
             {currentSession.title}
           </div>
 
-          {/* 메시지 목록 */}
           <div className="flex-1 overflow-y-auto space-y-5 mb-4">
             {messages.map(msg => (
               <motion.div
@@ -96,16 +97,13 @@ export default function MainAgent() {
             {isTyping && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <div className="max-w-[80%] px-4 py-2 rounded-2xl text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
-                  {typingText || (
-                    <span className="text-gray-400 text-xs">AI가 생각 중이에요...</span>
-                  )}
+                  {typingText || <span className="text-gray-400 text-xs">AI가 생각 중이에요...</span>}
                 </div>
               </motion.div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 입력창 */}
           <div className="flex items-center border-t border-gray-200 dark:border-gray-700 pt-3">
             <input
               type="text"
